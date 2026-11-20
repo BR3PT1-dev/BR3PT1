@@ -29,7 +29,7 @@ export const CableCatalogView: React.FC<CableCatalogViewProps> = ({
             <div className="flex items-center gap-2">
               <Cable className="h-4 w-4 text-[#f26522]" aria-hidden="true" />
               <span className="text-xs font-bold tracking-wide text-white">
-                Inspeção 3D de Cabos Barpa
+                Inspeção 3D de Cabos barpa
               </span>
             </div>
             <span className="font-mono-tech hidden text-[11px] text-[#8b93a5] sm:inline">

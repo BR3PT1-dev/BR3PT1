@@ -23,10 +23,13 @@ interface BottomDockProps {
   onToggleDoor: () => void;
   kvmOpen: boolean;
   onToggleKvm: () => void;
+  hasKvm: boolean;
   fiberSlideOpen: boolean;
   onToggleFiberSlide: () => void;
+  hasFiber: boolean;
   ventilationOn: boolean;
   onToggleVentilation: () => void;
+  hasVentilation: boolean;
   interiorLightOn: boolean;
   onToggleInteriorLight: () => void;
   explodedAmount: number;
@@ -47,10 +50,13 @@ export const BottomDock: React.FC<BottomDockProps> = ({
   onToggleDoor,
   kvmOpen,
   onToggleKvm,
+  hasKvm,
   fiberSlideOpen,
   onToggleFiberSlide,
+  hasFiber,
   ventilationOn,
   onToggleVentilation,
+  hasVentilation,
   interiorLightOn,
   onToggleInteriorLight,
   explodedAmount,
@@ -109,43 +115,61 @@ export const BottomDock: React.FC<BottomDockProps> = ({
               <button
                 type="button"
                 onClick={onToggleKvm}
-                aria-pressed={kvmOpen}
-                className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium whitespace-nowrap transition-colors ${
-                  kvmOpen
+                disabled={!hasKvm}
+                aria-pressed={hasKvm && kvmOpen}
+                title={
+                  hasKvm
+                    ? 'Abrir ou recolher consola KVM 1U'
+                    : 'Adicione a Consola KVM no painel de Produtos primeiro'
+                }
+                className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  hasKvm && kvmOpen
                     ? 'border-[#f26522] bg-[#f26522]/15 text-white'
                     : 'border-[#2d323e] bg-[#22262f] text-[#c2c9d6] hover:text-white'
                 }`}
               >
                 <Monitor className="h-3.5 w-3.5 text-[#f26522]" />
-                <span>{kvmOpen ? 'KVM Aberta' : 'KVM Recolhida'}</span>
+                <span>{hasKvm && kvmOpen ? 'KVM Aberta' : 'KVM'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={onToggleFiberSlide}
-                aria-pressed={fiberSlideOpen}
-                className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium whitespace-nowrap transition-colors ${
-                  fiberSlideOpen
+                disabled={!hasFiber}
+                aria-pressed={hasFiber && fiberSlideOpen}
+                title={
+                  hasFiber
+                    ? 'Extrair gaveta do Painel Óptico'
+                    : 'Adicione o Painel Óptico no painel de Produtos primeiro'
+                }
+                className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  hasFiber && fiberSlideOpen
                     ? 'border-[#f26522] bg-[#f26522]/15 text-white'
                     : 'border-[#2d323e] bg-[#22262f] text-[#c2c9d6] hover:text-white'
                 }`}
               >
                 <Layers className="h-3.5 w-3.5 text-[#f26522]" />
-                <span>{fiberSlideOpen ? 'Gaveta Fibra Extraída' : 'Gaveta Fibra'}</span>
+                <span>{hasFiber && fiberSlideOpen ? 'Gaveta Fibra Extraída' : 'Gaveta Fibra'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={onToggleVentilation}
-                aria-pressed={ventilationOn}
-                className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium whitespace-nowrap transition-colors ${
-                  ventilationOn
+                disabled={!hasVentilation}
+                aria-pressed={hasVentilation && ventilationOn}
+                title={
+                  hasVentilation
+                    ? 'Ligar ou desligar ventoinhas do teto'
+                    : 'Adicione a Unidade de Ventilação no painel de Produtos primeiro'
+                }
+                className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  hasVentilation && ventilationOn
                     ? 'border-[#f26522] bg-[#f26522]/15 text-white'
                     : 'border-[#2d323e] bg-[#22262f] text-[#c2c9d6] hover:text-white'
                 }`}
               >
                 <Fan className="h-3.5 w-3.5 text-[#f26522]" />
-                <span>{ventilationOn ? 'Ventilação Ativa' : 'Ventilação'}</span>
+                <span>{hasVentilation && ventilationOn ? 'Ventilação Ativa' : 'Ventilação'}</span>
               </button>
 
               <button
@@ -215,7 +239,7 @@ export const BottomDock: React.FC<BottomDockProps> = ({
             </div>
           </div>
 
-          {/* Row 2: Camera Presets + Quick Open Cabling Drawer */}
+          {/* Row 2: Camera Presets + Quick Open Products/Guide Drawer */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
               <Camera className="h-3.5 w-3.5 shrink-0 text-[#8b93a5] mr-1" aria-hidden="true" />
@@ -244,7 +268,7 @@ export const BottomDock: React.FC<BottomDockProps> = ({
               className="inline-flex items-center gap-1.5 rounded-md border border-[#3a4152] bg-[#22262f] px-3 py-1 text-xs font-semibold text-white whitespace-nowrap shrink-0 transition-colors hover:border-[#f26522] hover:bg-[#2a2f3a]"
             >
               <SlidersHorizontal className="h-3.5 w-3.5 text-[#f26522]" />
-              <span>Configurar Cablagem</span>
+              <span>Produtos &amp; Guia</span>
             </button>
           </div>
         </div>

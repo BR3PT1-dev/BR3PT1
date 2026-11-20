@@ -126,10 +126,10 @@ export function createProceduralTextures(maxAnisotropy: number): ProceduralTextu
   // White labeling strip above ports
   ppCtx.fillStyle = '#d8dde6';
   ppCtx.fillRect(72, 18, 880, 20);
-  // Barpa tiny branding left
+  // barpa tiny branding left
   ppCtx.fillStyle = '#f26522';
   ppCtx.font = 'bold 16px sans-serif';
-  ppCtx.fillText('BARPA', 14, 34);
+  ppCtx.fillText('barpa', 14, 34);
   ppCtx.fillStyle = '#94a3b8';
   ppCtx.font = 'bold 12px monospace';
   ppCtx.fillText('CAT.6A', 14, 54);
@@ -162,7 +162,7 @@ export function createProceduralTextures(maxAnisotropy: number): ProceduralTextu
   }
   const patchPanelFaceMap = configureTexture(ppCanvas, maxAnisotropy, true);
 
-  // 5. KVM 17" LCD Screen Diagnostics UI Texture (matching Barpa industrial aesthetic)
+  // 5. KVM 17" LCD Screen Diagnostics UI Texture (matching barpa industrial aesthetic)
   const [kvmCanvas, kvmCtx] = makeCanvas(512, 384);
   const screenGrad = kvmCtx.createLinearGradient(0, 0, 0, 384);
   screenGrad.addColorStop(0, '#101620');
@@ -174,7 +174,7 @@ export function createProceduralTextures(maxAnisotropy: number): ProceduralTextu
   kvmCtx.fillRect(0, 0, 512, 38);
   kvmCtx.fillStyle = '#f26522';
   kvmCtx.font = 'bold 16px sans-serif';
-  kvmCtx.fillText('BARPA KVM-1U17', 16, 24);
+  kvmCtx.fillText('barpa KVM-1U17', 16, 24);
   kvmCtx.fillStyle = '#94a3b8';
   kvmCtx.font = '12px monospace';
   kvmCtx.fillText('NORMA 1 · 42U LOCAL CONSOLE', 290, 24);
@@ -294,15 +294,15 @@ export function createProceduralTextures(maxAnisotropy: number): ProceduralTextu
   shadowCtx.fillRect(0, 0, 256, 256);
   const contactShadowMap = configureTexture(shadowCanvas, maxAnisotropy, true);
 
-  // 10. Top roof Barpa Nameplate texture
+  // 10. Top roof barpa Nameplate texture
   const [badgeCanvas, badgeCtx] = makeCanvas(256, 64);
   badgeCtx.fillStyle = '#14161a';
   badgeCtx.fillRect(0, 0, 256, 64);
   badgeCtx.fillStyle = '#f26522';
-  badgeCtx.font = '800 30px sans-serif';
+  badgeCtx.font = '800 32px sans-serif';
   badgeCtx.textAlign = 'center';
   badgeCtx.textBaseline = 'middle';
-  badgeCtx.fillText('BARPA', 90, 33);
+  badgeCtx.fillText('barpa', 90, 32);
   badgeCtx.fillStyle = '#d1d5db';
   badgeCtx.font = '600 15px monospace';
   badgeCtx.fillText('NORMA 1', 194, 34);

@@ -37,7 +37,9 @@ export interface RackSceneState {
   showDimensions: boolean;
   copperOption: CopperOptionId;
   fiberOption: FiberOptionId;
+  installedComponents: ComponentId[];
   selectedComponent: ComponentId | null;
+  previewComponent: ComponentId | null;
   viewMode: ViewportMode;
   activeCableSpecimen: CableTypeId;
 }
@@ -117,6 +119,9 @@ export class RackSceneController {
   private lastHoverCheck = 0;
   private hoveredId: ComponentId | null = null;
   private selectedId: ComponentId | null = null;
+  private previewId: ComponentId | null = null;
+  private installedSet = new Set<ComponentId>();
+  private installProgress = new Map<ComponentId, number>();
 
   constructor(container: HTMLElement, initialState: RackSceneState, callbacks: RackSceneCallbacks) {
     this.container = container;
@@ -218,7 +223,7 @@ export class RackSceneController {
 
     // Primary Realistic Interior PointLight inside the top LED bar casting shadows across equipment units
     this.interiorPointLight = new THREE.PointLight(0xfff1db, 3.2, 2.7, 1.4);
-    this.interiorPointLight.position.set(-0.04, 1.93, 0.21);
+    this.interiorPointLight.position.set(0, 1.93, 0.21);
     this.interiorPointLight.castShadow = !this.isSoftwareGl;
     this.interiorPointLight.shadow.mapSize.set(1024, 1024);
     this.interiorPointLight.shadow.camera.near = 0.08;
@@ -313,7 +318,16 @@ export class RackSceneController {
     this.rack.setVentilationActive(initialState.ventilationOn);
     this.rack.setInteriorLightActive(initialState.interiorLightOn);
     this.cableShowcase.setActiveCable(initialState.activeCableSpecimen);
+
+    this.installedSet = new Set(initialState.installedComponents);
+    this.selectedId = initialState.selectedComponent;
+    this.previewId = initialState.previewComponent;
+    for (const comp of COMPONENT_LIST) {
+      this.installProgress.set(comp.id, this.installedSet.has(comp.id) ? 1 : 0);
+    }
+
     this.syncVisibilityAndLights();
+    this.syncHighlights();
     this.applyKinematics();
 
     // 7. Raycaster restricted to Layer 1 proxy boxes
@@ -344,6 +358,15 @@ export class RackSceneController {
     const isRack = this.viewMode === 'rack';
     this.rack.root.visible = isRack;
     this.cableShowcase.root.visible = !isRack;
+
+    this.rack.componentGroups.forEach((group, id) => {
+      group.visible = this.installedSet.has(id);
+    });
+    this.rack.roofBlankingPlate.visible = !this.installedSet.has('ventilation');
+    this.rack.verticalTrunk.visible =
+      this.installedSet.has('patch-copper') ||
+      this.installedSet.has('brush-guide') ||
+      this.installedSet.has('cable-management');
 
     if (isRack) {
       this.interiorPointLight.intensity = this.interiorLightOn ? 3.2 : 0;
@@ -377,19 +400,42 @@ export class RackSceneController {
     this.rack.setVentilationActive(next.ventilationOn);
     this.rack.setInteriorLightActive(next.interiorLightOn);
     this.cableShowcase.setActiveCable(next.activeCableSpecimen);
+
+    const nextInstalled = new Set(next.installedComponents);
+    for (const comp of COMPONENT_LIST) {
+      const wasInstalled = this.installedSet.has(comp.id);
+      const nowInstalled = nextInstalled.has(comp.id);
+      if (!wasInstalled && nowInstalled) {
+        // Trigger smooth slide-in placement animation from 0 -> 1
+        this.installProgress.set(comp.id, 0);
+      } else if (!nowInstalled) {
+        this.installProgress.set(comp.id, 0);
+      }
+    }
+    this.installedSet = nextInstalled;
+
+    if (this.hoveredId && !this.installedSet.has(this.hoveredId)) {
+      this.hoveredId = null;
+      this.renderer.domElement.style.cursor = 'grab';
+    }
+
     this.selectedId = next.selectedComponent;
+    this.previewId = next.previewComponent;
     this.syncVisibilityAndLights();
     this.syncHighlights();
+    this.applyKinematics();
 
     if (modeChanged) {
       this.cameraGliding = false;
       if (this.viewMode === 'cable-showcase') {
-        this.camera.position.set(-0.04, 0.86, 1.32);
-        this.controls.target.set(0.24, 0.08, 0.0);
+        this.camera.position.set(0.08, 0.74, 1.28);
+        this.controls.target.set(0.18, 0.09, 0.02);
+        this.controls.minDistance = 0.42;
       } else {
         const hero = CAMERA_PRESETS[0];
         this.camera.position.set(...hero.position);
         this.controls.target.set(...hero.target);
+        this.controls.minDistance = 0.85;
       }
       this.controls.update();
     }
@@ -412,14 +458,24 @@ export class RackSceneController {
     _camGoalPos.set(...comp.cameraPreset.position);
     _camGoalTarget.set(...comp.cameraPreset.target);
     this.cameraGliding = true;
-    this.selectedId = componentId;
+    if (this.installedSet.has(componentId)) {
+      this.selectedId = componentId;
+      this.previewId = null;
+    } else {
+      this.previewId = componentId;
+      this.selectedId = null;
+    }
     this.syncHighlights();
     this.requestRender();
   }
 
   private syncHighlights() {
     this.rack.highlightMeshes.forEach((outline, id) => {
-      outline.visible = id === this.selectedId || id === this.hoveredId;
+      outline.visible =
+        this.installedSet.has(id) && (id === this.selectedId || id === this.hoveredId);
+    });
+    this.rack.slotGuideMeshes.forEach((guide, id) => {
+      guide.visible = !this.installedSet.has(id) && id === this.previewId;
     });
   }
 
@@ -433,6 +489,20 @@ export class RackSceneController {
     this.rack.rightSidePanel.position.x = ex * 0.42;
     this.rack.topCover.position.y = ex * 0.24;
     this.rack.rearDoorPivot.position.z = -0.4 + 0.005 - ex * 0.34;
+
+    // Smooth installation slide-in offset for each mounted component
+    this.rack.componentGroups.forEach((group, id) => {
+      const restPos = group.userData.restPos as [number, number, number] | undefined;
+      const offset = group.userData.installOffset as [number, number, number] | undefined;
+      if (!restPos || !offset) return;
+      const p = this.installProgress.get(id) ?? 1;
+      const inv = 1 - p;
+      group.position.set(
+        restPos[0] + offset[0] * inv,
+        restPos[1] + offset[1] * inv,
+        restPos[2] + offset[2] * inv,
+      );
+    });
 
     // Fiber optical drawer slides forward (+Z)
     this.rack.fiberDrawer.position.z = this.fiberSlideCur * 0.22;
@@ -469,6 +539,19 @@ export class RackSceneController {
     [this.explodeCur, moving] = dampToward(this.explodeCur, this.explodeTarget);
     stillMoving = stillMoving || moving;
 
+    for (const id of this.installedSet) {
+      const cur = this.installProgress.get(id) ?? 1;
+      if (cur < 0.998) {
+        const next = THREE.MathUtils.damp(cur, 1, this.isSoftwareGl ? 14 : 8, dt);
+        if (next >= 0.995) {
+          this.installProgress.set(id, 1);
+        } else {
+          this.installProgress.set(id, next);
+          stillMoving = true;
+        }
+      }
+    }
+
     if (this.cameraGliding) {
       const k = 1 - Math.exp(-(this.isSoftwareGl ? 12 : 6.5) * dt);
       this.camera.position.lerp(_camGoalPos, k);
@@ -485,7 +568,11 @@ export class RackSceneController {
       }
     }
 
-    if (this.ventilationOn && this.viewMode === 'rack') {
+    if (
+      this.ventilationOn &&
+      this.installedSet.has('ventilation') &&
+      this.viewMode === 'rack'
+    ) {
       const spinStep = dt * 10.5;
       for (const rotor of this.rack.fanRotors) {
         rotor.rotation.y += spinStep;
@@ -506,7 +593,9 @@ export class RackSceneController {
     const height = this.renderer.domElement.clientHeight;
     if (width <= 0 || height <= 0) return;
 
-    const result: ProjectedHotspot[] = COMPONENT_LIST.map((comp) => {
+    const result: ProjectedHotspot[] = COMPONENT_LIST.filter((comp) =>
+      this.installedSet.has(comp.id),
+    ).map((comp) => {
       _projVec.set(
         comp.hotspotLocalPos[0],
         comp.hotspotLocalPos[1],
@@ -608,8 +697,11 @@ export class RackSceneController {
     _pointerNdc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
     this.raycaster.setFromCamera(_pointerNdc, this.camera);
     const hits = this.raycaster.intersectObjects(this.rack.interactableMeshes, false);
-    if (hits.length > 0) {
-      return (hits[0].object.userData.componentId as ComponentId) ?? null;
+    for (const hit of hits) {
+      const id = hit.object.userData.componentId as ComponentId | undefined;
+      if (id && this.installedSet.has(id)) {
+        return id;
+      }
     }
     return null;
   }

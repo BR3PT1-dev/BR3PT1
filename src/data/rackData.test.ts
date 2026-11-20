@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  ALL_COMPONENT_IDS,
   RACK_DIMS,
   rackUnitToY,
   rackUnitsHeight,
@@ -30,13 +31,21 @@ test('rackUnitToY clamps out-of-range U inputs safely', () => {
   assert.equal(rackUnitsHeight(2), 2 * RACK_DIMS.uHeight);
 });
 
-test('all 6 rack components (including top ventilation) have unique hotspot numbers and valid U ranges', () => {
-  assert.equal(COMPONENT_LIST.length, 6);
+test('all 9 installable rack products have unique hotspot numbers, valid U ranges, and installation steps', () => {
+  assert.equal(COMPONENT_LIST.length, 9);
   const nums = new Set(COMPONENT_LIST.map((c) => c.hotspotNumber));
-  assert.equal(nums.size, 6);
+  assert.equal(nums.size, 9);
   assert.ok(COMPONENT_LIST.some((c) => c.id === 'ventilation'));
+  assert.ok(COMPONENT_LIST.some((c) => c.id === 'core-switch'));
+  assert.ok(COMPONENT_LIST.some((c) => c.id === 'pdu-bar'));
   for (const comp of COMPONENT_LIST) {
     assert.ok(comp.uStart >= 1 && comp.uEnd <= 42 && comp.uEnd >= comp.uStart);
+    assert.ok(comp.ref.startsWith('BARPA-'));
+    assert.ok(comp.mountingHardware.length > 5);
+    assert.ok(comp.tools.length > 3);
+    assert.ok(comp.installSteps.length >= 3);
+    assert.equal(comp.slotBox.center.length, 3);
+    assert.equal(comp.slotBox.size.length, 3);
   }
 });
 
@@ -74,9 +83,25 @@ test('support form validation rejects invalid inputs and accepts complete entrie
   assert.deepEqual(valid.errors, {});
 });
 
-test('calculateRackSummary reflects selected cabling options and free U count', () => {
-  const summary = calculateRackSummary('cat6a-orange', 'cpa-om4');
-  assert.match(summary.copperLabel, /Cat\.6A/);
-  assert.match(summary.fiberLabel, /CPA/);
-  assert.equal(summary.occupiedU + summary.freeU, RACK_DIMS.totalU);
+test('calculateRackSummary starts at 0U when empty and updates dynamically with installed components', () => {
+  const empty = calculateRackSummary('mixed-norma1', 'os2-sc-apc', []);
+  assert.equal(empty.installedCount, 0);
+  assert.equal(empty.totalProducts, 9);
+  assert.equal(empty.occupiedU, 0);
+  assert.equal(empty.freeU, RACK_DIMS.totalU);
+
+  const partial = calculateRackSummary('cat6a-orange', 'cpa-om4', [
+    'pp-fiber',
+    'pp-fiber',
+    'core-switch',
+    'ventilation',
+  ]);
+  assert.equal(partial.installedCount, 3);
+  assert.equal(partial.occupiedU, 4); // 3U fiber + 1U switch + 0U roof ventilation
+  assert.equal(partial.freeU, 38);
+
+  const full = calculateRackSummary('cat6a-orange', 'cpa-om4', ALL_COMPONENT_IDS);
+  assert.equal(full.installedCount, 9);
+  assert.equal(full.occupiedU + full.freeU, RACK_DIMS.totalU);
+  assert.ok(full.occupiedU > 0);
 });

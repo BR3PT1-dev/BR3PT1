@@ -19,13 +19,17 @@ export interface RackAssemblyHandles {
   rightSidePanel: THREE.Group;
   topCover: THREE.Group;
   ventilationGroup: THREE.Group;
+  roofBlankingPlate: THREE.Mesh;
   fanRotors: THREE.Group[];
   fiberDrawer: THREE.Group;
   kvmTray: THREE.Group;
   kvmScreenPivot: THREE.Group;
+  verticalTrunk: THREE.Group;
+  componentGroups: Map<ComponentId, THREE.Group>;
   dimensionsGroup: THREE.Group;
   interactableMeshes: THREE.Mesh[];
   highlightMeshes: Map<ComponentId, THREE.LineSegments>;
+  slotGuideMeshes: Map<ComponentId, THREE.LineSegments>;
   setCopperStyle: (optionId: CopperOptionId) => void;
   setFiberStyle: (optionId: FiberOptionId) => void;
   setVentilationActive: (on: boolean) => void;
@@ -337,11 +341,23 @@ export function buildNorma1Rack(
     topCover.add(roofSideBar);
   }
 
+  // Removable blanking cover in roof aperture when BARPA-FAN-4U is not yet installed
+  const roofBlankingPlate = new THREE.Mesh(
+    trackGeo(new THREE.BoxGeometry(0.475, 0.014, 0.44)),
+    matCabinetSteel,
+  );
+  roofBlankingPlate.position.set(0, bodyTopY + topH - 0.008, -0.01);
+  roofBlankingPlate.castShadow = true;
+  roofBlankingPlate.receiveShadow = true;
+  topCover.add(roofBlankingPlate);
+
   // =========================================================
   // 2B. TOP 4-FAN VENTILATION UNIT (BARPA-FAN-4U) + INTERIOR LED BAR
   // =========================================================
   const ventilationGroup = new THREE.Group();
   ventilationGroup.position.set(0, bodyTopY, -0.01);
+  ventilationGroup.userData.restPos = [0, bodyTopY, -0.01];
+  ventilationGroup.userData.installOffset = [0, 0.22, 0];
   topCover.add(ventilationGroup);
 
   const fanChassisTop = new THREE.Mesh(
@@ -464,7 +480,7 @@ export function buildNorma1Rack(
 
   // Interior LED Light Bar Fixture (mounted along front-top soffit rail inside the rack)
   const ledFixtureGroup = new THREE.Group();
-  ledFixtureGroup.position.set(-0.04, bodyTopY - 0.024, 0.255);
+  ledFixtureGroup.position.set(0, bodyTopY - 0.024, 0.255);
   ledFixtureGroup.rotation.x = 0.35;
   topCover.add(ledFixtureGroup);
 
@@ -652,9 +668,9 @@ export function buildNorma1Rack(
   frontDoorPivot.add(handleBase, handleLever);
 
   // =========================================================
-  // 5. INTERNAL 19" VERTICAL MOUNTING RAILS & CABLE DUCT
+  // 5. INTERNAL 19" VERTICAL MOUNTING RAILS & LEFT/RIGHT CABLE ORGANIZERS
   // =========================================================
-  const rackCenterX = -0.04; // Leaves generous vertical cable management channel on the right (matching photo!)
+  const rackCenterX = 0; // Symmetric 19" bay flanked by BOTH left and right vertical cable organizers
   const railSpan = RACK_DIMS.railWidth; // 0.4826m
   const railHeight = RACK_DIMS.totalU * RACK_DIMS.uHeight; // ~1.867m
   const railCenterY = rackUnitToY(21.5);
@@ -675,42 +691,94 @@ export function buildNorma1Rack(
     root.add(rail);
   }
 
-  // Right-Side Vertical Cable Management Channel & Cover (prominent black vertical shroud in reference photo!)
-  const ductX = rackCenterX + railSpan / 2 + 0.078;
-  const ductCover = new THREE.Mesh(
-    trackGeo(new THREE.BoxGeometry(0.095, railHeight - 0.04, 0.085)),
-    matCabinetMatte,
-  );
-  ductCover.position.set(ductX, railCenterY, frontRailZ - 0.022);
-  ductCover.castShadow = true;
-  root.add(ductCover);
+  // Symmetric Left & Right Vertical Cable Management Organizers (matching Norma 1 twin vertical ducts)
+  const ductOffset = railSpan / 2 + 0.068;
+  const leftDuctX = rackCenterX - ductOffset;
+  const ductX = rackCenterX + ductOffset;
+  const ductBodyGeo = trackGeo(new THREE.BoxGeometry(0.084, railHeight - 0.04, 0.082));
+  const ductFrontCoverGeo = trackGeo(new THREE.BoxGeometry(0.072, railHeight - 0.06, 0.01));
 
-  // Subtle vertical orange cable bundle visible peeking inside the right duct edge
-  const verticalTrunkCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(ductX - 0.035, rackUnitToY(36), frontRailZ + 0.012),
-    new THREE.Vector3(ductX - 0.028, rackUnitToY(24), frontRailZ - 0.01),
-    new THREE.Vector3(ductX - 0.032, rackUnitToY(14), frontRailZ + 0.008),
-    new THREE.Vector3(ductX - 0.03, 0.22, frontRailZ - 0.04),
-  ]);
-  const verticalTrunk = new THREE.Mesh(
-    trackGeo(new THREE.TubeGeometry(verticalTrunkCurve, 28, 0.016, 8, false)),
-    matCopperPrimary,
+  for (const side of [-1, 1] as const) {
+    const sx = rackCenterX + side * ductOffset;
+    const ductCover = new THREE.Mesh(ductBodyGeo, matCabinetMatte);
+    ductCover.position.set(sx, railCenterY, frontRailZ - 0.022);
+    ductCover.castShadow = true;
+    ductCover.receiveShadow = true;
+    root.add(ductCover);
+
+    const frontTrimDoor = new THREE.Mesh(ductFrontCoverGeo, matCabinetSteel);
+    frontTrimDoor.position.set(sx, railCenterY, frontRailZ + 0.022);
+    frontTrimDoor.castShadow = true;
+    root.add(frontTrimDoor);
+  }
+
+  // Slotted horizontal cable-entry fingers along the inner face of BOTH left and right organizers
+  const fingerCountPerSide = 20;
+  const sideFingerGeo = trackGeo(new THREE.BoxGeometry(0.024, 0.014, 0.036));
+  const sideFingersInst = new THREE.InstancedMesh(
+    sideFingerGeo,
+    matDarkPlastic,
+    fingerCountPerSide * 2,
   );
+  let sfIdx = 0;
+  for (const side of [-1, 1] as const) {
+    const innerEdgeX = rackCenterX + side * (railSpan / 2 + 0.024);
+    for (let i = 0; i < fingerCountPerSide; i++) {
+      const fy = rackUnitToY(2 + i * 2);
+      dummy.position.set(innerEdgeX, fy, frontRailZ + 0.004);
+      dummy.rotation.set(0, 0, 0);
+      dummy.updateMatrix();
+      sideFingersInst.setMatrixAt(sfIdx++, dummy.matrix);
+    }
+  }
+  sideFingersInst.instanceMatrix.needsUpdate = true;
+  sideFingersInst.computeBoundingSphere();
+  root.add(sideFingersInst);
+
+  // Inner D-ring cable guides along both left and right rails
+  const ringGeo = trackGeo(new THREE.TorusGeometry(0.018, 0.0038, 8, 16));
+  const sideRingsInst = new THREE.InstancedMesh(ringGeo, matCabinetSteel, 20);
+  let srIdx = 0;
+  for (const side of [-1, 1] as const) {
+    const ringX = rackCenterX + side * (railSpan / 2 + 0.022);
+    for (let i = 0; i < 10; i++) {
+      dummy.position.set(ringX, rackUnitToY(4 + i * 4), frontRailZ + 0.018);
+      dummy.rotation.set(0, Math.PI / 2, 0);
+      dummy.updateMatrix();
+      sideRingsInst.setMatrixAt(srIdx++, dummy.matrix);
+    }
+  }
+  sideRingsInst.instanceMatrix.needsUpdate = true;
+  sideRingsInst.computeBoundingSphere();
+  root.add(sideRingsInst);
+
+  // Vertical cable bundles peeking inside BOTH left and right organizer channels
+  const verticalTrunk = new THREE.Group();
   root.add(verticalTrunk);
 
-  // Left vertical ring cable organizer rail
-  const leftRingX = rackCenterX - railSpan / 2 - 0.04;
-  const ringGeo = trackGeo(new THREE.TorusGeometry(0.02, 0.004, 8, 16));
-  const leftRingsInst = new THREE.InstancedMesh(ringGeo, matCabinetSteel, 10);
-  for (let i = 0; i < 10; i++) {
-    dummy.position.set(leftRingX, rackUnitToY(4 + i * 4), frontRailZ - 0.01);
-    dummy.rotation.set(0, Math.PI / 2, 0);
-    dummy.updateMatrix();
-    leftRingsInst.setMatrixAt(i, dummy.matrix);
-  }
-  leftRingsInst.instanceMatrix.needsUpdate = true;
-  leftRingsInst.computeBoundingSphere();
-  root.add(leftRingsInst);
+  const rightTrunkCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(ductX - 0.028, rackUnitToY(36), frontRailZ + 0.012),
+    new THREE.Vector3(ductX - 0.022, rackUnitToY(24), frontRailZ - 0.008),
+    new THREE.Vector3(ductX - 0.026, rackUnitToY(14), frontRailZ + 0.008),
+    new THREE.Vector3(ductX - 0.024, 0.22, frontRailZ - 0.036),
+  ]);
+  const rightTrunkMesh = new THREE.Mesh(
+    trackGeo(new THREE.TubeGeometry(rightTrunkCurve, 28, 0.015, 8, false)),
+    matCopperPrimary,
+  );
+  verticalTrunk.add(rightTrunkMesh);
+
+  const leftTrunkCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(leftDuctX + 0.028, rackUnitToY(39), frontRailZ + 0.012),
+    new THREE.Vector3(leftDuctX + 0.022, rackUnitToY(26), frontRailZ - 0.008),
+    new THREE.Vector3(leftDuctX + 0.026, rackUnitToY(14), frontRailZ + 0.008),
+    new THREE.Vector3(leftDuctX + 0.024, 0.22, frontRailZ - 0.036),
+  ]);
+  const leftTrunkMesh = new THREE.Mesh(
+    trackGeo(new THREE.TubeGeometry(leftTrunkCurve, 28, 0.014, 8, false)),
+    matCopperSecondary,
+  );
+  verticalTrunk.add(leftTrunkMesh);
 
   // =========================================================
   // 6. COMPONENT 1: PAINEL ÓPTICO DESLIZANTE (39U - 41U)
@@ -718,6 +786,8 @@ export function buildNorma1Rack(
   const fiberGroup = new THREE.Group();
   const fiberY = rackUnitToY(40.2);
   fiberGroup.position.set(rackCenterX, fiberY, frontRailZ);
+  fiberGroup.userData.restPos = [rackCenterX, fiberY, frontRailZ];
+  fiberGroup.userData.installOffset = [0, 0, 0.28];
   root.add(fiberGroup);
 
   // Fixed outer mounting ears
@@ -827,6 +897,8 @@ export function buildNorma1Rack(
   // 7. COMPONENT 2: PATCH PANELS CAT.6A + CURVED PATCH CORDS (31U - 36U)
   // =========================================================
   const copperGroup = new THREE.Group();
+  copperGroup.userData.restPos = [0, 0, 0];
+  copperGroup.userData.installOffset = [0, 0, 0.28];
   root.add(copperGroup);
 
   const ppFaceMat = trackMat(
@@ -890,26 +962,30 @@ export function buildNorma1Rack(
 
     for (let i = 0; i < cablesPerRow; i++) {
       const t = i / (cablesPerRow - 1);
-      const startX = rackCenterX - 0.195 + t * 0.36;
+      const startX = rackCenterX - 0.18 + t * 0.36;
       const startZ = frontRailZ + 0.016;
-      const sag = 0.018 + (1 - t) * 0.016 + (i % 3) * 0.004;
-      const bulgeZ = frontRailZ + 0.038 + (i % 4) * 0.005;
+      const goLeft = i < cablesPerRow / 2;
+      const edgeSide = goLeft ? -1 : 1;
+      const sag = 0.016 + Math.abs(0.5 - t) * 0.016 + (i % 3) * 0.004;
+      const bulgeZ = frontRailZ + 0.038 + (i % 4) * 0.004;
 
       dummy.position.set(startX, py - 0.004, frontRailZ + 0.009);
       dummy.rotation.set(0, 0, 0);
       dummy.updateMatrix();
       plugsInst.setMatrixAt(plugIdx++, dummy.matrix);
 
+      const exitRailX = rackCenterX + edgeSide * (railSpan / 2 + 0.022);
+      const targetDuctX = goLeft ? leftDuctX + 0.024 : ductX - 0.024;
       const curve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(startX, py - 0.004, startZ),
-        new THREE.Vector3(startX + 0.02, gy + 0.014 - sag * 0.3, bulgeZ),
+        new THREE.Vector3(startX + edgeSide * 0.018, gy + 0.014 - sag * 0.3, bulgeZ),
         new THREE.Vector3(
-          THREE.MathUtils.lerp(startX, rackCenterX + railSpan / 2 + 0.02, 0.55),
+          THREE.MathUtils.lerp(startX, exitRailX, 0.55),
           gy - 0.004 + (i % 3) * 0.004,
           bulgeZ + 0.004,
         ),
-        new THREE.Vector3(rackCenterX + railSpan / 2 + 0.035, gy - 0.01, frontRailZ + 0.022),
-        new THREE.Vector3(ductX - 0.028, gy - 0.038, frontRailZ - 0.008),
+        new THREE.Vector3(exitRailX, gy - 0.01, frontRailZ + 0.02),
+        new THREE.Vector3(targetDuctX, gy - 0.038, frontRailZ - 0.006),
       ]);
 
       const cableMesh = new THREE.Mesh(
@@ -930,6 +1006,8 @@ export function buildNorma1Rack(
   const kvmBaseY = rackUnitToY(22.5);
   const kvmAnchor = new THREE.Group();
   kvmAnchor.position.set(rackCenterX, kvmBaseY, frontRailZ);
+  kvmAnchor.userData.restPos = [rackCenterX, kvmBaseY, frontRailZ];
+  kvmAnchor.userData.installOffset = [0, 0, 0.28];
   root.add(kvmAnchor);
 
   // Fixed chassis housing inside rack
@@ -1039,13 +1117,18 @@ export function buildNorma1Rack(
   // =========================================================
   // 9. ACCESSORY DRAWER (18U-19U) + CORE MANAGED SWITCH (16U)
   // =========================================================
+  const drawerGroup = new THREE.Group();
+  drawerGroup.userData.restPos = [0, 0, 0];
+  drawerGroup.userData.installOffset = [0, 0, 0.26];
+  root.add(drawerGroup);
+
   const drawer2U = new THREE.Mesh(
     trackGeo(new THREE.BoxGeometry(railSpan - 0.015, 0.086, 0.42)),
     matCabinetSteel,
   );
   drawer2U.position.set(rackCenterX, rackUnitToY(18.5), frontRailZ - 0.21);
   drawer2U.castShadow = true;
-  root.add(drawer2U);
+  drawerGroup.add(drawer2U);
 
   const drawerLock = new THREE.Mesh(
     trackGeo(new THREE.CylinderGeometry(0.008, 0.008, 0.014, 12)),
@@ -1053,9 +1136,14 @@ export function buildNorma1Rack(
   );
   drawerLock.rotation.x = Math.PI / 2;
   drawerLock.position.set(rackCenterX, rackUnitToY(18.5) + 0.01, frontRailZ + 0.006);
-  root.add(drawerLock);
+  drawerGroup.add(drawerLock);
 
   // 1U Core Switch (16U)
+  const switchGroup = new THREE.Group();
+  switchGroup.userData.restPos = [0, 0, 0];
+  switchGroup.userData.installOffset = [0, 0, 0.26];
+  root.add(switchGroup);
+
   const switchY = rackUnitToY(16);
   const switchBody = new THREE.Mesh(
     trackGeo(new THREE.BoxGeometry(railSpan - 0.015, 0.043, 0.38)),
@@ -1064,7 +1152,7 @@ export function buildNorma1Rack(
   switchBody.position.set(rackCenterX, switchY, frontRailZ - 0.19);
   switchBody.castShadow = true;
   switchBody.receiveShadow = true;
-  root.add(switchBody);
+  switchGroup.add(switchBody);
 
   // Static LED indicators along the switch faceplate (green/cyan/amber)
   const ledGeo = trackGeo(new THREE.BoxGeometry(0.005, 0.004, 0.004));
@@ -1102,13 +1190,15 @@ export function buildNorma1Rack(
   ledCyanInst.instanceMatrix.needsUpdate = true;
   ledGreenInst.computeBoundingSphere();
   ledCyanInst.computeBoundingSphere();
-  root.add(ledGreenInst, ledCyanInst);
+  switchGroup.add(ledGreenInst, ledCyanInst);
 
   // =========================================================
   // 10. COMPONENT 4: PAINEL GUIA COM ESCOVA 1U + CABOS (13U - 15U)
   // =========================================================
   const brushY = rackUnitToY(14);
   const brushGroup = new THREE.Group();
+  brushGroup.userData.restPos = [0, 0, 0];
+  brushGroup.userData.installOffset = [0, 0, 0.24];
   root.add(brushGroup);
 
   const brushFrame = new THREE.Mesh(
@@ -1137,13 +1227,24 @@ export function buildNorma1Rack(
 
   const lowerBundleCount = 10;
   for (let i = 0; i < lowerBundleCount; i++) {
-    const startX = rackCenterX - 0.06 + i * 0.022;
+    const startX = rackCenterX - 0.15 + i * 0.033;
+    const goLeft = i < lowerBundleCount / 2;
+    const edgeSide = goLeft ? -1 : 1;
+    const targetDuctX = goLeft ? leftDuctX + 0.024 : ductX - 0.024;
     const isOrange = i % 2 === 0;
     const bCurve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(startX, brushY, frontRailZ - 0.01),
-      new THREE.Vector3(startX + 0.03, brushY + (i % 3 - 1) * 0.012, frontRailZ + 0.032),
-      new THREE.Vector3(rackCenterX + railSpan / 2 + 0.015, brushY - 0.008, frontRailZ + 0.036),
-      new THREE.Vector3(ductX - 0.03, brushY - 0.035, frontRailZ - 0.008),
+      new THREE.Vector3(
+        startX + edgeSide * 0.028,
+        brushY + ((i % 3) - 1) * 0.012,
+        frontRailZ + 0.032,
+      ),
+      new THREE.Vector3(
+        rackCenterX + edgeSide * (railSpan / 2 + 0.02),
+        brushY - 0.008,
+        frontRailZ + 0.034,
+      ),
+      new THREE.Vector3(targetDuctX, brushY - 0.035, frontRailZ - 0.006),
     ]);
     const bMesh = new THREE.Mesh(
       trackGeo(new THREE.TubeGeometry(bCurve, 16, 0.0038, 6, false)),
@@ -1153,15 +1254,36 @@ export function buildNorma1Rack(
     brushGroup.add(bMesh);
   }
 
-  // Lower slim power distribution bar (11U) leaving open inspection view to coiled base reserve
+  // Lower 1U PDU Power Distribution Bar (11U)
+  const pduGroup = new THREE.Group();
+  pduGroup.userData.restPos = [0, 0, 0];
+  pduGroup.userData.installOffset = [0, 0, 0.24];
+  root.add(pduGroup);
+
+  const pduY = rackUnitToY(11);
   const pduShelf = new THREE.Mesh(
     trackGeo(new THREE.BoxGeometry(railSpan - 0.02, 0.042, 0.24)),
     matCabinetMatte,
   );
-  pduShelf.position.set(rackCenterX, rackUnitToY(11), frontRailZ - 0.14);
+  pduShelf.position.set(rackCenterX, pduY, frontRailZ - 0.14);
   pduShelf.castShadow = true;
   pduShelf.receiveShadow = true;
-  root.add(pduShelf);
+  pduGroup.add(pduShelf);
+
+  // 8 Schuko outlet sockets + red power switch along PDU front face
+  const pduSocketGeo = trackGeo(new THREE.CylinderGeometry(0.011, 0.011, 0.008, 12));
+  pduSocketGeo.rotateX(Math.PI / 2);
+  for (let s = 0; s < 8; s++) {
+    const sock = new THREE.Mesh(pduSocketGeo, matDarkPlastic);
+    sock.position.set(rackCenterX - 0.16 + s * 0.042, pduY, frontRailZ - 0.018);
+    pduGroup.add(sock);
+  }
+  const pduSwitch = new THREE.Mesh(
+    trackGeo(new THREE.BoxGeometry(0.018, 0.012, 0.008)),
+    matBarpaAccent,
+  );
+  pduSwitch.position.set(rackCenterX + 0.19, pduY, frontRailZ - 0.018);
+  pduGroup.add(pduSwitch);
 
   // =========================================================
   // 11. COMPONENT 5: RESERVA DE CABOS DA BASE (COILED COPPER & FIBER/CPA SLACK)
@@ -1169,6 +1291,8 @@ export function buildNorma1Rack(
   const baseReserveY = bodyBottomY + baseH + 0.012;
   const spoolGroup = new THREE.Group();
   spoolGroup.position.set(0, baseReserveY, 0.04);
+  spoolGroup.userData.restPos = [0, baseReserveY, 0.04];
+  spoolGroup.userData.installOffset = [0, 0.16, 0.14];
   root.add(spoolGroup);
 
   const spoolPlate = new THREE.Mesh(
@@ -1256,10 +1380,23 @@ export function buildNorma1Rack(
   addDimLabel('800 mm', new THREE.Vector3(dX - 0.12, wY + 0.06, 0));
 
   // =========================================================
-  // 13. INTERACTABLE RAYCAST PROXY BOXES (Layer 1) + SELECTION HIGHLIGHTS
+  // 13. INTERACTABLE RAYCAST PROXY BOXES (Layer 1) + SELECTION & TARGET SLOT GUIDES
   // =========================================================
+  const componentGroups = new Map<ComponentId, THREE.Group>([
+    ['ventilation', ventilationGroup],
+    ['pp-fiber', fiberGroup],
+    ['patch-copper', copperGroup],
+    ['kvm', kvmAnchor],
+    ['accessory-drawer', drawerGroup],
+    ['core-switch', switchGroup],
+    ['brush-guide', brushGroup],
+    ['pdu-bar', pduGroup],
+    ['cable-management', spoolGroup],
+  ]);
+
   const interactableMeshes: THREE.Mesh[] = [];
   const highlightMeshes = new Map<ComponentId, THREE.LineSegments>();
+  const slotGuideMeshes = new Map<ComponentId, THREE.LineSegments>();
 
   const proxyMat = trackMat(
     new THREE.MeshBasicMaterial({
@@ -1267,51 +1404,20 @@ export function buildNorma1Rack(
     }),
   );
 
-  const proxyConfigs: Array<{
-    id: ComponentId;
-    size: [number, number, number];
-    pos: [number, number, number];
-  }> = [
-    {
-      id: 'ventilation',
-      size: [0.52, 0.11, 0.48],
-      pos: [0, H - 0.01, -0.01],
-    },
-    { id: 'pp-fiber', size: [0.54, 0.16, 0.36], pos: [rackCenterX, fiberY, frontRailZ - 0.12] },
-    {
-      id: 'patch-copper',
-      size: [0.56, 0.28, 0.22],
-      pos: [rackCenterX, rackUnitToY(33.5), frontRailZ - 0.04],
-    },
-    {
-      id: 'kvm',
-      size: [0.52, 0.36, 0.42],
-      pos: [rackCenterX, kvmBaseY + 0.16, frontRailZ + 0.08],
-    },
-    {
-      id: 'brush-guide',
-      size: [0.54, 0.12, 0.16],
-      pos: [rackCenterX, brushY, frontRailZ - 0.02],
-    },
-    {
-      id: 'cable-management',
-      size: [0.68, 0.14, 0.68],
-      pos: [0, baseReserveY + 0.05, 0.02],
-    },
-  ];
-
-  for (const cfg of proxyConfigs) {
-    const geo = trackGeo(new THREE.BoxGeometry(cfg.size[0], cfg.size[1], cfg.size[2]));
+  for (const id of Object.keys(RACK_COMPONENTS) as ComponentId[]) {
+    const spec = RACK_COMPONENTS[id];
+    const geo = trackGeo(new THREE.BoxGeometry(...spec.slotBox.size));
     const proxy = new THREE.Mesh(geo, proxyMat);
-    proxy.position.set(cfg.pos[0], cfg.pos[1], cfg.pos[2]);
+    proxy.position.set(...spec.slotBox.center);
     proxy.layers.set(INTERACT_LAYER);
-    proxy.userData.componentId = cfg.id;
-    proxy.name = `proxy_${cfg.id}`;
+    proxy.userData.componentId = id;
+    proxy.name = `proxy_${id}`;
     root.add(proxy);
     interactableMeshes.push(proxy);
 
-    // Crisp selection highlight outline
     const edges = trackGeo(new THREE.EdgesGeometry(geo));
+
+    // Selection/Hover highlight outline (for installed units)
     const outlineMat = trackMat(
       new THREE.LineBasicMaterial({
         color: 0xf26522,
@@ -1323,7 +1429,24 @@ export function buildNorma1Rack(
     outline.position.copy(proxy.position);
     outline.visible = false;
     root.add(outline);
-    highlightMeshes.set(cfg.id, outline);
+    highlightMeshes.set(id, outline);
+
+    // Target U-Slot Mounting Guide (amber dashed wireframe shown when previewing an uninstalled product)
+    const slotGuideMat = trackMat(
+      new THREE.LineDashedMaterial({
+        color: 0xff8a3d,
+        dashSize: 0.025,
+        gapSize: 0.015,
+        transparent: true,
+        opacity: 0.95,
+      }),
+    );
+    const slotGuide = new THREE.LineSegments(edges, slotGuideMat);
+    slotGuide.computeLineDistances();
+    slotGuide.position.copy(proxy.position);
+    slotGuide.visible = false;
+    root.add(slotGuide);
+    slotGuideMeshes.set(id, slotGuide);
   }
 
   // Top edge Barpa orange accent trim bar
@@ -1359,8 +1482,6 @@ export function buildNorma1Rack(
     matInteriorLedDiffuser.color.setHex(on ? 0xfff7ed : 0x6b7280);
   };
 
-  void RACK_COMPONENTS;
-
   return {
     root,
     frontDoorPivot,
@@ -1369,13 +1490,17 @@ export function buildNorma1Rack(
     rightSidePanel,
     topCover,
     ventilationGroup,
+    roofBlankingPlate,
     fanRotors,
     fiberDrawer,
     kvmTray,
     kvmScreenPivot,
+    verticalTrunk,
+    componentGroups,
     dimensionsGroup,
     interactableMeshes,
     highlightMeshes,
+    slotGuideMeshes,
     setCopperStyle,
     setFiberStyle,
     setVentilationActive,

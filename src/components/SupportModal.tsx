@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { CheckCircle2, X } from 'lucide-react';
 import {
   calculateRackSummary,
+  ComponentId,
   CopperOptionId,
   FiberOptionId,
+  RACK_COMPONENTS,
   SupportFormInput,
   validateSupportForm,
 } from '../data/rackData';
@@ -17,11 +19,13 @@ interface SupportTicketRecord {
   message: string;
   copperLabel: string;
   fiberLabel: string;
+  installedSummary: string;
 }
 
 interface SupportModalProps {
   open: boolean;
   onClose: () => void;
+  installedComponents: ComponentId[];
   copperOption: CopperOptionId;
   fiberOption: FiberOptionId;
   prefillMessage?: string;
@@ -32,6 +36,7 @@ const TICKETS_STORAGE_KEY = 'barpa_support_tickets_v1';
 export const SupportModal: React.FC<SupportModalProps> = ({
   open,
   onClose,
+  installedComponents,
   copperOption,
   fiberOption,
   prefillMessage,
@@ -65,7 +70,11 @@ export const SupportModal: React.FC<SupportModalProps> = ({
 
   if (!open) return null;
 
-  const summary = calculateRackSummary(copperOption, fiberOption);
+  const summary = calculateRackSummary(copperOption, fiberOption, installedComponents);
+  const installedSummary =
+    installedComponents.length > 0
+      ? installedComponents.map((id) => RACK_COMPONENTS[id]?.ref ?? id).join(', ')
+      : 'Bastidor vazio (sem acessórios)';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,6 +99,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
           message: form.message.trim(),
           copperLabel: summary.copperLabel,
           fiberLabel: summary.fiberLabel,
+          installedSummary,
         },
       ].slice(-20);
       localStorage.setItem(TICKETS_STORAGE_KEY, JSON.stringify(next));
@@ -125,7 +135,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
               {savedTicketsCount > 0 ? ` · ${savedTicketsCount} pedido(s) registado(s)` : ''}
             </div>
             <h2 id="support-modal-title" className="mt-1 text-lg font-bold text-white">
-              Solicitar Apoio Técnico Barpa
+              Solicitar Apoio Técnico barpa
             </h2>
           </div>
           <button
@@ -147,8 +157,9 @@ export const SupportModal: React.FC<SupportModalProps> = ({
               </div>
               <p className="mt-2 text-xs leading-relaxed text-[#d1d5db]">
                 O pedido <span className="font-mono-tech font-semibold text-white">{submittedTicket}</span>{' '}
-                foi encaminhado para a equipa de engenharia Barpa juntamente com a configuração
-                atual do bastidor ({summary.copperLabel} · {summary.fiberLabel}).
+                foi encaminhado para a equipa de engenharia barpa juntamente com a configuração
+                atual do bastidor ({summary.installedCount}/{summary.totalProducts} módulos ·{' '}
+                {summary.occupiedU}U · {summary.copperLabel} · {summary.fiberLabel}).
               </p>
             </div>
             <div className="flex justify-end">
