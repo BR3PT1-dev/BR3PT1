@@ -1,0 +1,6 @@
+{
+  "name": "Barpa Smart Install · Bastidor Norma 1 42U 3D",
+  "description": "Visualizador e configurador 3D interativo do Bastidor Barpa Norma 1 42U com inspeção de componentes, gestão de cablagem e apoio técnico.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

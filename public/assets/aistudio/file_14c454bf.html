@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Barpa Smart Install · Bastidor Norma 1 42U</title>
+  <link rel="preconnect" href="[fonts.googleapis.com](https://fonts.googleapis.com)">
+  <link rel="preconnect" href="[fonts.gstatic.com](https://fonts.gstatic.com)" crossorigin>
+  <link href="[fonts.googleapis.com](https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap)" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary: #f26522; /* Laranja Barpa */
+      --primary-hover: #d85213;
+      --dark: #121316;
+      --card-bg: #1c1e24;
+      --panel-bg: #252830;
+      --border: #323642;
+      --text: #e5e7eb;
+      --text-muted: #9ca3af;
+      --accent-blue: #0284c7;
+      --success: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background-color: var(--dark);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    header {
+      background: rgba(28, 30, 36, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: 1px;
+    }
+
+    .rack-badge {
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      color: #fff;
+      font-size: 0.8rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+
+    .btn-outline {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .btn-outline:hover { background: var(--panel-bg); }
+
+    /* Layout Principal */
+    .app-container {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      flex: 1;
+      height: calc(100vh - 65px);
+    }
+
+    /* Área do Bastidor / AR */
+    .viewport {
+      position: relative;
+      background: radial-gradient(circle at center, #232731 0%, #121316 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 20px;
+    }
+
+    .ar-status {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    /* Representação do Bastidor com Hotspots */
+    .rack-visualizer {
+      position: relative;
+      max-height: 85vh;
+      display: inline-block;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      border-radius: 6px;
+      background: #0d0e11;
+    }
+
+    .rack-visualizer img {
+      max-height: 85vh;
+      width: auto;
+      display: block;
+      border-radius: 6px;
+    }
+
+    /* Hotspots interativos */
+    .hotspot {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      font-size: 11px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 0 0 4px rgba(242, 101, 34, 0.35);
+      animation: pulse-ring 2s infinite;
+      transition: transform 0.2s ease;
+      z-index: 10;
+    }
+
+    .hotspot:hover {
+      transform: scale(1.25);
+      background: #fff;
+      color: var(--primary);
+    }
+
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(242, 101, 34, 0.5); }
+      70% { box-shadow: 0 0 0 10px rgba(242, 101, 34, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(242, 101, 34, 0); }
+    }
+
+    /* Painel Lateral de Opcionais */
+    .sidebar {
+      background: var(--card-bg);
+      border-left: 1px solid var(--border);
+      padding: 18px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    .option-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .option-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .option-card:hover {
+      border-color: var(--primary);
+    }
+
+    .option-card.active {
+      border-color: var(--primary);
+      background: rgba(242, 101, 34, 0.08);
+    }
+
+    .option-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .option-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Modal / Pop-up de Detalhes do Produto */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      max-width: 520px;
+      width: 100%;
+      padding: 24px;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+      animation: modalFade 0.2s ease-out;
+    }
+
+    @keyframes modalFade {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .modal-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .modal-ref {
+      font-size: 0.75rem;
+      color: var(--primary);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.4rem;
+      cursor: pointer;
+    }
+
+    .modal-body {
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .spec-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 0.8rem;
+    }
+
+    .spec-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .spec-table td:first-child {
+      color: var(--text-muted);
+      width: 40%;
+    }
+
+    /* Widget de IA & Chat de Montagem */
+    .ai-bubble-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 360px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      box-shadow: 0 8px 24px rgba(242, 101, 34, 0.4);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      z-index: 60;
+      transition: transform 0.2s ease;
+    }
+
+    .ai-bubble-btn:hover {
+      transform: scale(1.08);
+    }
+
+    .ai-chat-window {
+      position: fixed;
+      bottom: 86px;
+      right: 360px;
+      width: 360px;
+      height: 480px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      display: none;
+      flex-direction: column;
+      z-index: 70;
+      overflow: hidden;
+    }
+
+    .ai-chat-window.open {
+      display: flex;
+    }
+
+    .chat-header {
+      background: var(--panel-bg);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 0.82rem;
+    }
+
+    .msg {
+      padding: 8px 12px;
+      border-radius: 8px;
+      max-width: 85%;
+      line-height: 1.4;
+    }
+
+    .msg-bot {
+      background: var(--panel-bg);
+      color: var(--text);
+      align-self: flex-start;
+      border: 1px solid var(--border);
+    }
+
+    .msg-user {
+      background: var(--primary);
+      color: #fff;
+      align-self: flex-end;
+    }
+
+    .chat-fallback-btn {
+      margin-top: 8px;
+      background: transparent;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      width: 100%;
+      text-align: center;
+      font-weight: 600;
+    }
+    .chat-fallback-btn:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .chat-input-area {
+      padding: 10px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 6px;
+      background: var(--dark);
+    }
+
+    .chat-input {
+      flex: 1;
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #fff;
+      font-size: 0.8rem;
+    }
+
+    .chat-input:focus {
+      outline: 1px solid var(--primary);
+    }
+
+    /* Responsividade */
+    @media (max-width: 992px) {
+      .app-container {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+      .sidebar {
+        height: auto;
+        border-left: none;
+        border-top: 1px solid var(--border);
+      }
+      .ai-bubble-btn, .ai-chat-window {
+        right: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de Topo -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">BARPA</div>
+      <div class="rack-badge">Bastidor Norma 1 42U</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline" onclick="toggleARModal()">
+        <span>📷</span> Ativar Câmara (AR)
+      </button>
+      <button class="btn btn-primary" onclick="openSupportModal()">
+        <span>🛠️</span> Solicitar Ajuda Técnica
+      </button>
+    </div>
+  </header>
+
+  <div class="app-container">
+    
+    <!-- Área de Visualização 3D / Bastidor -->
+    <main class="viewport">
+      <div class="ar-status">
+        <div class="pulse-dot"></div>
+        Modo AR conceptual · Tamanho real (Norma 1 42U)
+      </div>
+
+      <div class="rack-visualizer">
+        <!-- Substituir pelo caminho local da imagem ou asset 3D -->
+        <img id="rackImg" src="image.png" alt="Bastidor Barpa Norma 1 42U montado">
+
+        <!-- Hotspots interativos mapeados aos componentes visíveis -->
+        <div class="hotspot" style="top: 10%; left: 45%;" onclick="showProduct('pp-fiber')">1</div>
+        <div class="hotspot" style="top: 24%; left: 45%;" onclick="showProduct('patch-copper')">2</div>
+        <div class="hotspot" style="top: 42%; left: 50%;" onclick="showProduct('kvm')">3</div>
+        <div class="hotspot" style="top: 64%; left: 45%;" onclick="showProduct('brush-guide')">4</div>
+        <div class="hotspot" style="top: 86%; left: 50%;" onclick="showProduct('cable-management')">5</div>
+      </div>
+    </main>
+
+    <!-- Painel Lateral: Opcionais e Seleção de Acessórios -->
+    <aside class="sidebar">
+      <div class="section-title">
+        <span>Opcionais de Cablagem</span>
+      </div>
+
+      <div class="option-group">
+        <label style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">PATCH CORDS RJ45 (COBRE)</label>
+        <div class="option-card active" onclick="selectOption(this, 'Patch Cord Cat.6A S/FTP Laranja 2m')">
+          <div class="option-header">
+            <span>Cat.6A S/FTP LSOH</span>
+            <span style="color:var(--primary)">Laranja 2m</span>
+          </div>
+          <div class="option-desc">Ideal para 10Gbps com blindagem individual e gestão otimizada.</div>
+        </div>
+
+        <div class="option-card" onclick="selectOption(this, 'Patch Cord Cat.6 U/UTP Cinza 1.5m')">
+          <div class="option-header">
+            <span>Cat.6 U/UTP LSOH</span>
+            <span style="color:var(--text-muted)">Cinza 1.5m</span>
+          </div>
+          <div class="option-desc">Cablagem horizontal flexível de alta densidade.</div>
+        </div>
+      </div>
+
+      <div class="option-group">
+        <label style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">PIGTAILS & FIBRA ÓPTICA</label>
+        <div class="option-card" onclick="selectOption(this, 'Pigtails OS2 9/125 SC/APC 12 cores')">
+          <div class="option-header">
+            <span>Pigtails Monomodo OS2</span>
+            <span style="color:#38bdf8">SC/APC</span>
+          </div>
+          <div class="option-desc">Kit 12 cores codificadas com perdas reduzidas de inserção.</div>
+        </div>
+
+        <div class="option-card" onclick="selectOption(this, 'Pigtails OM4 50/125 LC-Duplex')">
+          <div class="option-header">
+            <span>Pigtails Multimodo OM4</span>
+            <span style="color:#e879f9">LC Aqua</span>
+          </div>
+          <div class="option-desc">Adequado para backbone e interligação de servidores até 40G/100G.</div>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <span>Acessórios Ativos & Gestão</span>
+      </div>
+
+      <div class="option-group">
+        <div class="option-card" onclick="showProduct('kvm')">
+          <div class="option-header">
+            <span>Consola KVM 1U 19"</span>
+            <span style="color:var(--primary)">Ecrã + Teclado</span>
+          </div>
+          <div class="option-desc">Controlo local integrado com calha telescópica.</div>
+        </div>
+
+        <div class="option-card" onclick="showProduct('cable-management')">
+          <div class="option-header">
+            <span>Reserva de Cabos Base</span>
+            <span>Chassi 19"</span>
+          </div>
+          <div class="option-desc">Guia circular para raio de curvatura em cabos de fibra e cobre.</div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Botão Flutuante e Janela do Assistente IA -->
+  <button class="ai-bubble-btn" title="Assistente Virtual Barpa" onclick="toggleAIChat()">🤖</button>
+
+  <div class="ai-chat-window" id="aiChat">
+    <div class="chat-header">
+      <div style="font-weight:700; font-size:0.85rem; display:flex; align-items:center; gap:6px;">
+        <span>✨</span> Barpa AI Installer
+      </div>
+      <button onclick="toggleAIChat()" style="background:none; border:none; color:var(--text-muted); cursor:pointer;">✕</button>
+    </div>
+    <div class="chat-messages" id="chatMsgs">
+      <div class="msg msg-bot">
+        Olá! Sou o assistente virtual Barpa. Posso ajudá-lo na identificação de componentes, raio de curvatura de pigtails ou ordem de montagem do Bastidor Norma 1 42U. Em que posso ajudar?
+      </div>
+    </div>
+    <div class="chat-input-area">
+      <input type="text" id="aiInput" class="chat-input" placeholder="Ex: Como fixar o patch panel?" onkeydown="handleChatKey(event)">
+      <button class="btn btn-primary" style="padding:6px 12px;" onclick="sendAIMessage()">Enviar</button>
+    </div>
+  </div>
+
+  <!-- Modal Genérico de Informação do Produto -->
+  <div class="modal-overlay" id="productModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="pTitle">Nome do Produto</div>
+          <div class="modal-ref" id="pRef">REF: BARPA-00000</div>
+        </div>
+        <button class="modal-close" onclick="closeModal('productModal')">✕</button>
+      </div>
+      <div class="modal-body" id="pContent">
+        <!-- Conteúdo preenchido dinamicamente -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Solicitação de Suporte Técnico -->
+  <div class="modal-overlay" id="supportModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Solicitar Apoio Técnico Barpa</div>
+          <div class="modal-ref">Norma 1 42U · Suporte de Instalação</div>
+        </div>
+        <button class="modal-close" onclick="closeModal('supportModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>A nossa equipa técnica está pronta para apoiar na certificação, fixação de guias e organização de cabos em obra.</p>
+        <form onsubmit="submitSupportForm(event)" style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+          <input type="text" placeholder="Nome Completo" required class="chat-input">
+          <input type="email" placeholder="Email profissional" required class="chat-input">
+          <input type="tel" placeholder="Telefone / WhatsApp" required class="chat-input">
+          <textarea placeholder="Descreva a dúvida de montagem ou componente em falta..." rows="3" required class="chat-input" style="resize:none;"></textarea>
+          <button type="submit" class="btn btn-primary" style="justify-content:center; margin-top:6px;">Enviar Pedido para Engenharia</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Base de dados dos produtos presentes no Bastidor Norma 1 42U
+    const productsDB = {
+      'pp-fiber': {
+        title: 'Painel Óptico Deslizante 1U 24 portas SC/LC',
+        ref: 'BARPA-FIBER-1U24',
+        desc: 'Painel de terminação de fibra óptica com gaveta telescópica extraível e organizador de pigtails integrado. Protege o raio de curvatura mínimo.',
+        specs: {
+          'Capacidade': 'Até 48 fibras (LC Duplex) / 24 (SC)',
+          'Fixação': '19" Frontal / Profundidade ajustável',
+          'Acessórios': 'Cassete de fusão, prensa-cabos e pigtails incluídos',
+          'Norma': 'ISO/IEC 11801, EN 50173'
+        }
+      },
+      'patch-copper': {
+        title: 'Patch Panel Cat.6A Blindado 24 Portas 1U',
+        ref: 'BARPA-COPPER-24C6A',
+        desc: 'Painel de alta densidade equipado com conectores Keystone blindados Toolless. Compatível com frequências até 500 MHz e aplicações PoE++ (IEEE 802.3bt).',
+        specs: {
+          'Categoria': 'Cat.6A EA Class',
+          'Blindagem': 'STP 360° em liga de zinco',
+          'Gestão Traseira': 'Barra de fixação e alívio de tração integrada',
+          'Cablagem': 'T568A / T568B'
+        }
+      },
+      'kvm': {
+        title: 'Consola KVM 1U com Monitor LCD 17" e Teclado',
+        ref: 'BARPA-KVM-1U17',
+        desc: 'Consola rebatível para gestão centralizada de servidores locais. Mecanismo de fecho suave e calha dupla para abertura independente.',
+        specs: {
+          'Ecrã': '17" TFT LED 1280x1024',
+          'Portas': 'VGA / HDMI / USB console',
+          'Altura': '1U padrão 19 polegadas',
+          'Consumo': 'Baixo consumo energético (< 25W)'
+        }
+      },
+      'brush-guide': {
+        title: 'Painel Guia de Cabos com Escova 1U',
+        ref: 'BARPA-BRUSH-1U',
+        desc: 'Permite a passagem ordenada de patch cords e cabos de fibra entre a parte frontal e traseira, mantendo a eficiência térmica e o fluxo de ar do rack.',
+        specs: {
+          'Material': 'Aço laminado a frio e cerdas de nylon de alta densidade',
+          'Isolamento': 'Evita a recirculação de ar quente',
+          'Dimensão': '1U x 19 polegadas'
+        }
+      },
+      'cable-management': {
+        title: 'Carretel / Suporte de Reserva de Cabos da Base',
+        ref: 'BARPA-CABLE-SPOOL',
+        desc: 'Módulo de fixação na base para enrolamento controlado do excesso de chicotes de cobre e tubos de fibra sem esmagamento.',
+        specs: {
+          'Raio Curvatura': 'R > 50 mm garantido',
+          'Posicionamento': 'Base ou teto do bastidor Norma 1',
+          'Capacidade': 'Até 15m de cabo multifibra estruturado'
+        }
+      }
+    };
+
+    // Abertura do Pop-up de Produto
+    function showProduct(key) {
+      const p = productsDB[key];
+      if (!p) return;
+
+      document.getElementById('pTitle').textContent = p.title;
+      document.getElementById('pRef').textContent = 'REF: ' + p.ref;
+
+      let html = `<p>${p.desc}</p>`;
+      html += '<table class="spec-table"><tbody>';
+      for (const [k, v] of Object.entries(p.specs)) {
+        html += `<tr><td><strong>${k}</strong></td><td>${v}</td></tr>`;
+      }
+      html += '</tbody></table>';
+
+      document.getElementById('pContent').innerHTML = html;
+      document.getElementById('productModal').classList.add('open');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    function openSupportModal() {
+      document.getElementById('supportModal').classList.add('open');
+    }
+
+    function selectOption(el, name) {
+      el.parentElement.querySelectorAll('.option-card').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    // Chat da IA
+    function toggleAIChat() {
+      const chat = document.getElementById('aiChat');
+      chat.classList.toggle('open');
+      if (chat.classList.contains('open')) {
+        document.getElementById('aiInput').focus();
+      }
+    }
+
+    function handleChatKey(e) {
+      if (e.key === 'Enter') sendAIMessage();
+    }
+
+    function sendAIMessage() {
+      const input = document.getElementById('aiInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const container = document.getElementById('chatMsgs');
+
+      // Adiciona mensagem do utilizador
+      const userMsg = document.createElement('div');
+      userMsg.className = 'msg msg-user';
+      userMsg.textContent = text;
+      container.appendChild(userMsg);
+      input.value = '';
+
+      // Resposta inteligente da IA contextualizada
+      setTimeout(() => {
+        const botMsg = document.createElement('div');
+        botMsg.className = 'msg msg-bot';
+
+        const lower = text.toLowerCase();
+        if (lower.includes('pigtail') || lower.includes('fibra')) {
+          botMsg.innerHTML = "Ao fusionar pigtails nos tabuleiros do Norma 1, certifique-se de manter o raio de curvatura superior a 30 mm e acondicionar as fusões nos suportes termorretráteis fornecidos.";
+        } else if (lower.includes('patch cord') || lower.includes('cabo')) {
+          botMsg.innerHTML = "Recomendamos passar os patch cords pelas guias verticais laterais do Norma 1 42U antes de ligar às portas dos switches para não tapar os ecrãs KVM.";
+        } else if (lower.includes('ajuda') || lower.includes('erro') || lower.includes('dúvida') || lower.includes('montar')) {
+          botMsg.innerHTML = `Entendido. Se esta explicação não for suficiente para concluir a sua montagem com segurança:<br>
+            <button class="chat-fallback-btn" onclick="openSupportModal()">Solicitar Ajuda de um Técnico Barpa</button>`;
+        } else {
+          botMsg.innerHTML = `No bastidor Norma 1 42U, todas as réguas e perfis possuem marcação em U para facilitar o alinhamento. Precisa de apoio sobre fixação de calhas, barramentos de terra ou cablagem?<br>
+            <button class="chat-fallback-btn" onclick="openSupportModal()">Falar com Engenheiro Técnico</button>`;
+        }
+
+        container.appendChild(botMsg);
+        container.scrollTop = container.scrollHeight;
+      }, 500);
+    }
+
+    function submitSupportForm(e) {
+      e.preventDefault();
+      alert('Pedido enviado com sucesso! Um engenheiro técnico da Barpa entrará em contacto nas próximas 2 horas.');
+      closeModal('supportModal');
+    }
+
+    function toggleARModal() {
+      alert('A iniciar sessão de Realidade Aumentada (WebXR) para projeção 1:1 do Bastidor Norma 1 42U no espaço físico.');
+    }
+  </script>
+</body>
+</html>
